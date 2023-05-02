@@ -1,0 +1,10 @@
+(library
+ (name saharax)
+ (libraries stdio base xla prms)
+ (preprocess
+  (pps ppx-prms)))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))
