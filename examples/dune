@@ -1,0 +1,8 @@
+(executables
+ (names basic)
+ (libraries saharax))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))

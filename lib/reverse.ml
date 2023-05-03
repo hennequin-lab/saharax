@@ -10,6 +10,7 @@ type 'a num =
 module Make (O : Ops.T) = struct
   type t = O.t num
 
+  let name = Printf.sprintf "Reverse(%s)" O.name
   let primal x = x.p
 
   let adjoint x =
@@ -25,18 +26,13 @@ module Make (O : Ops.T) = struct
           | None -> Some xa_update
           | Some xa -> Some O.(xa + xa_update))
 
-  let with_adj_of y ~f =
-    match y.a with
-    | None -> failwith "Adjoint does not exist"
-    | Some ya -> f ya
-
   let lift_11 f df x =
     E.perform
       (Shift
          (fun (k : (t, t) E.Deep.continuation) ->
            let y = { p = f x.p; a = None } in
            let z = E.Deep.continue k y in
-           with_adj_of y ~f:(fun ya ->
+           Option.iter y.a ~f:(fun ya ->
              let xa_update = df x.p ya in
              update_adj x xa_update);
            z))
@@ -47,13 +43,14 @@ module Make (O : Ops.T) = struct
          (fun (k : (t, t) E.Deep.continuation) ->
            let y = { p = f x1.p x2.p; a = None } in
            let z = E.Deep.continue k y in
-           with_adj_of y ~f:(fun ya ->
+           Option.iter y.a ~f:(fun ya ->
              let x1a, x2a = df x1.p x2.p ya in
              update_adj x1 x1a;
              update_adj x2 x2a);
            z))
 
   let zeros_like x = { p = O.zeros_like x.p; a = Some (O.zeros_like x.p) }
+  let ones_like x = { p = O.ones_like x.p; a = Some (O.zeros_like x.p) }
 
   let neg =
     let f x = O.neg x in
@@ -78,5 +75,10 @@ module Make (O : Ops.T) = struct
   let sin =
     let f x = O.sin x in
     let df x dy = O.(dy * cos x) in
+    lift_11 f df
+
+  let l2norm_sqr' =
+    let f _ = assert false in
+    let df _ _ = assert false in
     lift_11 f df
 end

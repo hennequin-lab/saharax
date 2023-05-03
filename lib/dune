@@ -1,6 +1,7 @@
 (library
  (name saharax)
- (libraries stdio base xla prms)
+ (public_name saharax)
+ (libraries stdio base xla owl prms)
  (preprocess
   (pps ppx-prms)))
 
