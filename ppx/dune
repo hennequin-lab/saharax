@@ -1,0 +1,7 @@
+(library
+ (name ppx_saharax)
+ (public_name ppx-saharax)
+ (libraries base ppxlib)
+ (preprocess
+  (pps ppxlib.metaquot))
+ (kind ppx_deriver))

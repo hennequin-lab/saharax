@@ -10,7 +10,6 @@ type 'a num =
 module Make (O : Ops.T) = struct
   type t = O.t num
 
-  let name = Printf.sprintf "Reverse(%s)" O.name
   let primal x = x.p
 
   let adjoint x =

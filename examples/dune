@@ -1,6 +1,8 @@
 (executables
  (names basic)
- (libraries saharax))
+ (libraries saharax sexplib)
+ (preprocess
+  (pps ppx_sexp_conv ppx_sexp_message ppx_saharax)))
 
 (env
  (dev

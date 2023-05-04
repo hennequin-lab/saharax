@@ -9,7 +9,6 @@ module Make (O : Ops.T) = struct
 
   open O
 
-  let name = Printf.sprintf "Forward(%s)" O.name
   let primal x = x.p
   let tangent x = x.t
   let zeros_like x = { p = O.zeros_like x.p; t = O.zeros_like x.p }

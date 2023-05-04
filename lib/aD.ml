@@ -2,23 +2,22 @@ open Base
 module E = Caml.Effect
 
 type 'a diff = (module Ops.T with type t = 'a) -> 'a -> 'a
-type differentiable = { f : 'a. (module Ops.T with type t = 'a) -> 'a -> 'a }
 
-let jvp (type a) (module O : Ops.T with type t = a) ~(f : differentiable) ~(v : a) (x : a)
-  =
-  let module F = Forward.Make (O) in
-  let v = Forward.{ p = x; t = v } in
-  let y = f.f (module F) v in
-  y.p, y.t
+let jvp (type a) (module O : Ops.T with type t = a) ~f ~(v : a) (x : a) =
+  let open Forward in
+  let module F = Make (O) in
+  let v = { p = x; t = v } in
+  let y = f (module F : Ops.T with type t = O.t Forward.num) v in
+  F.primal y, F.tangent y
 
-let vjp (type a) (module O : Ops.T with type t = a) ~(f : differentiable) ~(v : a) (x : a)
-  =
-  let x = Reverse.{ p = x; a = Some (O.zeros_like x) } in
-  let module R = Reverse.Make (O) in
+let vjp (type a) (module O : Ops.T with type t = a) ~f ~(v : a) (x : a) =
+  let open Reverse in
+  let x = { p = x; a = Some (O.zeros_like x) } in
+  let module R = Make (O) in
   let y =
     E.Deep.try_with
       (fun () ->
-        let y = f.f (module R) x in
+        let y = f (module R : Ops.T with type t = O.t Reverse.num) x in
         y.a <- Some v;
         y)
       ()
@@ -30,20 +29,16 @@ let vjp (type a) (module O : Ops.T with type t = a) ~(f : differentiable) ~(v : 
               | _ -> None)
         }
   in
-  y.p, Option.value_exn x.a
+  R.primal y, R.adjoint x
 
-let value_and_grad
-  (type a)
-  (module O : Ops.T with type t = a)
-  ~(f : differentiable)
-  (x : a)
-  =
-  let x = Reverse.{ p = x; a = Some (O.zeros_like x) } in
-  let module R = Reverse.Make (O) in
+let value_and_grad (type a) (module O : Ops.T with type t = a) ~f (x : a) =
+  let open Reverse in
+  let x = { p = x; a = Some (O.zeros_like x) } in
+  let module R = Make (O) in
   let y =
     E.Deep.try_with
       (fun () ->
-        let y = f.f (module R) x in
+        let y = f (module R : Ops.T with type t = O.t Reverse.num) x in
         y.a <- Some (O.ones_like y.p);
         y)
       ()
@@ -55,4 +50,4 @@ let value_and_grad
               | _ -> None)
         }
   in
-  y.p, Option.value_exn x.a
+  R.primal y, R.adjoint x
