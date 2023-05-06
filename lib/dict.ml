@@ -11,11 +11,6 @@ let cat label =
     | Some p -> Some (label :: p)
 
 module type Basic = sig
-  (** If you want to make your own custom parameter structure
-      which for a reason or another cannot be automated using [ppx-prms]
-      (e.g. if it is not a record type), the you will need to use {!Make}
-      and provide a module of this {!Basic} type. *)
-
   type 'a t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
@@ -45,8 +40,8 @@ module type T = sig
   val iter2 : 'a t -> 'b t -> f:('a -> 'b -> unit) -> unit
 end
 
-module Make (P : Basic) : T with type 'a t = 'a P.t = struct
-  include P
+module Make (B : Basic) : T with type 'a t = 'a B.t = struct
+  include B
 
   let iter x ~f = fold ?path:None x ~init:() ~f:(fun () (x, _) -> f x)
   let iter2 x y ~f = fold2 ?path:None x y ~init:() ~f:(fun () (x, y, _) -> f x y)
@@ -59,4 +54,40 @@ module P : T with type 'a t = 'a = Make (struct
   let map2 x y ~f = f x y
   let fold ?path x ~init ~f = f init (x, path)
   let fold2 ?path x y ~init ~f = f init (x, y, path)
+end)
+
+module List (P : T) = Make (struct
+  type 'a t = 'a P.t list
+
+  let map x ~f = List.map x ~f:(P.map ~f)
+  let map2 x y ~f = List.map2_exn x y ~f:(P.map2 ~f)
+
+  let fold ?path x ~init ~f =
+    List.foldi x ~init ~f:(fun i init w ->
+      P.fold ?path:(cat (Int.to_string i) path) ~init ~f w)
+
+  let fold2 ?path x y ~init ~f =
+    let _, result =
+      List.fold2_exn x y ~init:(0, init) ~f:(fun (i, init) w1 w2 ->
+        i + 1, P.fold2 ?path:(cat (Int.to_string i) path) ~init ~f w1 w2)
+    in
+    result
+end)
+
+module Array (P : T) : T with type 'a t = 'a P.t array = Make (struct
+  type 'a t = 'a P.t array
+
+  let map x ~f = Array.map x ~f:(P.map ~f)
+  let map2 x y ~f = Array.map2_exn x y ~f:(P.map2 ~f)
+
+  let fold ?path x ~init ~f =
+    Array.foldi x ~init ~f:(fun i init w ->
+      P.fold ?path:(cat (Int.to_string i) path) ~init ~f w)
+
+  let fold2 ?path x y ~init ~f =
+    let _, result =
+      Array.fold2_exn x y ~init:(0, init) ~f:(fun (i, init) w1 w2 ->
+        i + 1, P.fold2 ?path:(cat (Int.to_string i) path) ~init ~f w1 w2)
+    in
+    result
 end)

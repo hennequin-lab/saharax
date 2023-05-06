@@ -1,5 +1,5 @@
 (executables
- (names basic)
+ (names basic dict)
  (libraries saharax sexplib)
  (preprocess
   (pps ppx_sexp_conv ppx_sexp_message ppx_saharax)))

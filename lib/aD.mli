@@ -1,23 +1,21 @@
-type 'a diff = (module Ops.T with type t = 'a) -> 'a -> 'a
+module P : module type of Dict.P
 
-val jvp
-  :  (module Ops.T with type t = 'a)
-  -> f:'a Forward.num diff
-  -> v:'a
-  -> 'a
-  -> 'a * 'a
+module Make : functor (In : Dict.T) (Out : Dict.T) (O : Ops.T) -> sig
+  val jvp
+    :  f:
+         ((module Ops.T with type t = O.t Forward.num)
+          -> O.t Forward.num In.t
+          -> O.t Forward.num Out.t)
+    -> ?v:O.t In.t
+    -> O.t In.t
+    -> O.t Out.t * O.t Out.t
 
-val diff : (module Ops.T with type t = 'a) -> f:'a Forward.num diff -> 'a -> 'a * 'a
-
-val vjp
-  :  (module Ops.T with type t = 'a)
-  -> f:'a Reverse.num diff
-  -> v:'a
-  -> 'a
-  -> 'a * 'a
-
-val value_and_grad
-  :  (module Ops.T with type t = 'a)
-  -> f:'a Reverse.num diff
-  -> 'a
-  -> 'a * 'a
+  val vjp
+    :  f:
+         ((module Ops.T with type t = O.t Reverse.num)
+          -> O.t Reverse.num In.t
+          -> O.t Reverse.num Out.t)
+    -> ?v:O.t Out.t
+    -> O.t In.t
+    -> O.t Out.t * O.t In.t
+end
