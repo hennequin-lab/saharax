@@ -1,5 +1,4 @@
 open Base
-module E = Caml.Effect
 
 type 'a num =
   { p : 'a
@@ -9,8 +8,9 @@ type 'a num =
 module Make (O : Ops.T) : sig
   include Ops.T with type t = O.t num
 
-  type _ E.t += Shift : (('a, t) E.Deep.continuation -> t) -> 'a E.t
-
+  val lift : ?adjoint:O.t -> O.t -> t
+  val reverse_pass : unit -> unit
   val primal : t -> O.t
   val adjoint : t -> O.t
+  val set_adjoint : t -> O.t -> unit
 end

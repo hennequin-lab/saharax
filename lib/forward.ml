@@ -11,6 +11,15 @@ module Make (O : Ops.T) = struct
 
   let primal x = x.p
   let tangent x = x.t
+
+  let lift ?tangent x =
+    { p = x
+    ; t =
+        (match tangent with
+         | Some v -> v
+         | None -> O.ones_like x)
+    }
+
   let zeros_like x = { p = O.zeros_like x.p; t = O.zeros_like x.p }
   let ones_like x = { p = O.ones_like x.p; t = O.zeros_like x.p }
 

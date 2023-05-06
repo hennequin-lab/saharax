@@ -7,6 +7,8 @@ val jvp
   -> 'a
   -> 'a * 'a
 
+val diff : (module Ops.T with type t = 'a) -> f:'a Forward.num diff -> 'a -> 'a * 'a
+
 val vjp
   :  (module Ops.T with type t = 'a)
   -> f:'a Reverse.num diff

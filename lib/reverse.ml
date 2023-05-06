@@ -1,5 +1,4 @@
 open Base
-module E = Caml.Effect
 
 (* primal / adjoint pair *)
 type 'a num =
@@ -10,6 +9,15 @@ type 'a num =
 module Make (O : Ops.T) = struct
   type t = O.t num
 
+  let s = Stack.create ()
+
+  let rec reverse_pass () =
+    match Stack.pop s with
+    | Some u ->
+      u ();
+      reverse_pass ()
+    | None -> ()
+
   let primal x = x.p
 
   let adjoint x =
@@ -17,7 +25,7 @@ module Make (O : Ops.T) = struct
     | Some a -> a
     | None -> failwith "this value has no adjoint"
 
-  type _ E.t += Shift : (('a, t) E.Deep.continuation -> t) -> 'a E.t
+  let set_adjoint x a = x.a <- Some a
 
   let update_adj x xa_update =
     x.a
@@ -26,27 +34,33 @@ module Make (O : Ops.T) = struct
           | Some xa -> Some O.(xa + xa_update))
 
   let lift_11 f df x =
-    E.perform
-      (Shift
-         (fun (k : (t, t) E.Deep.continuation) ->
-           let y = { p = f x.p; a = None } in
-           let z = E.Deep.continue k y in
-           Option.iter y.a ~f:(fun ya ->
-             let xa_update = df x.p ya in
-             update_adj x xa_update);
-           z))
+    let y = { p = f x.p; a = None } in
+    let u () =
+      Option.iter y.a ~f:(fun ya ->
+        let xa_update = df x.p ya in
+        update_adj x xa_update)
+    in
+    Stack.push s u;
+    y
 
   let lift_21 f df x1 x2 =
-    E.perform
-      (Shift
-         (fun (k : (t, t) E.Deep.continuation) ->
-           let y = { p = f x1.p x2.p; a = None } in
-           let z = E.Deep.continue k y in
-           Option.iter y.a ~f:(fun ya ->
-             let x1a, x2a = df x1.p x2.p ya in
-             update_adj x1 x1a;
-             update_adj x2 x2a);
-           z))
+    let y = { p = f x1.p x2.p; a = None } in
+    let u () =
+      Option.iter y.a ~f:(fun ya ->
+        let x1a, x2a = df x1.p x2.p ya in
+        update_adj x1 x1a;
+        update_adj x2 x2a)
+    in
+    Stack.push s u;
+    y
+
+  let lift ?adjoint x =
+    let a =
+      match adjoint with
+      | Some v -> Some v
+      | None -> Some (O.zeros_like x)
+    in
+    { p = x; a }
 
   let zeros_like x = { p = O.zeros_like x.p; a = Some (O.zeros_like x.p) }
   let ones_like x = { p = O.ones_like x.p; a = Some (O.zeros_like x.p) }
@@ -77,7 +91,7 @@ module Make (O : Ops.T) = struct
     lift_11 f df
 
   let l2norm_sqr' =
-    let f _ = assert false in
+    let f _ : O.t = assert false in
     let df _ _ = assert false in
     lift_11 f df
 end
